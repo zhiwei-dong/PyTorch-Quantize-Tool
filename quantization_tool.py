@@ -10,6 +10,8 @@
 # -------------------------    import section(edit if you need)    -------------------------
 import argparse
 
+import os
+import tqdm
 import numpy
 import torch
 import torch.nn as nn
@@ -159,7 +161,7 @@ def Trim2FixedPoint(data, bit_width=8, fraction_length=0):
 """
 for layer in range(len(params)):  # 遍历所有的层数
     acc_param = 0  # init accuracy
-    print('-------Quantizing layer:{} parameter-------'.format(layer))
+    print('-------Quantizing layer:{}\'s parameter-------'.format(layer))
     for fraction_length_of_param in range(bit_width):  # 遍历所有的小数位置
         print('--------Trying fraction length: {}---------'.format(fraction_length_of_param))
         for key in params[layer]:  # 量化制定的层
@@ -202,8 +204,10 @@ print('-------Quantize parameter is done, best accuracy is {} -------'.format(ac
 这个部分是为了获得 fraction_length，这个参数是为模型定义量化的时候准备的
 """
 for layer in range(len(is_quantization)):  # 遍历所有层
+    print('-------Quantizing layer:{}\'s inout-------'.format(layer))
     acc_param = 0  # init accuracy
     for fraction_length_of_param in range(bit_width):  # 遍历所有的小数位
+        print('--------Trying fraction length: {}---------'.format(fraction_length_of_param))
         fraction_length[layer] = fraction_length_of_param
         is_quantization[layer] = 1
         model = Net(bit_width=bit_width,
@@ -214,13 +218,14 @@ for layer in range(len(is_quantization)):  # 遍历所有层
         fraction_length[layer] = fraction_length_of_param if acc_inout_eval > acc_param else fraction_length[layer]
         acc_param = max(acc_param, acc_inout_eval)
 # test section
+print('-------Testing-------')
 is_quantization = numpy.ones_like(fraction_length)  # 返回一个和best一样尺寸的全1矩阵
 model = Net(bit_width=bit_width,
             fraction_length=fraction_length,
             is_quantization=is_quantization)
 model.load_state_dict(final_state)
 acc_inout_eval = evaluate(model, data_loader)
-print('-------Quantize inout is done, best accuracy is {} -------'.format(acc_inout_eval))
+print('-------Quantize inout is done, best accuracy is {}-------'.format(acc_inout_eval))
 
 # -------------------------    saving quantized model    -------------------------
 print("Saving quantized model.")
