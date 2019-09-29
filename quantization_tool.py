@@ -10,8 +10,6 @@
 # -------------------------    import section(edit if you need)    -------------------------
 import argparse
 
-import os
-import tqdm
 import numpy
 import torch
 import torch.nn as nn
@@ -19,24 +17,28 @@ from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 
 # -------------------------    param section    -------------------------
-
+"""
+Args:
+    bit_width 位宽
+    fraction_length 小数位长度 仅在输入输出量化时起作用
+    is_quantize 是否量化 仅在输入输出量化时起作用
+    
+"""
 parser = argparse.ArgumentParser(description='PyTorch Ristretto Quantization Tool')
-# bit_width 位宽
-# fraction_length 小数位长度 仅在输入输出量化时起作用
-# is_quantize 是否量化 仅在输入输出量化时起作用
-parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
-                    help='number of data loading workers (default: 4)')
-pretrain_model_path = './model/model_quan_704_xh_src.pth'  # pre-trained param
-param_saving_path = './model/model_quan_704_xh_param.pth'  # 量化后参数存储的位置
-state = torch.load(pretrain_model_path)  # pre-trained state
-result_param = {}
+parser.add_argument('-p', '--pretrain', help='path of pre-trained model')
+parser.add_argument('-s', '--saving', help='path to saving quantized model')
+parser.add_argument('-b', '--bit_width', type=int, default=8,
+                    help='number of bit you want to quantize pretrained model (default:8)')
+args = parser.parse_args()
+pretrain_model_path = args.pretrain  # 预训练模型参数路径
+param_saving_path = args.saving  # 量化后参数存储的位置
+bit_width = args.bit_width  # 量化的目标比特数
+state = torch.load(pretrain_model_path)  # 预训练模型参数
 params = []
-state_tmp = state.copy()  # copy state for test after quantization
-bit_width = 8
 fraction_length = numpy.zeros(len(params))
 is_quantization = numpy.zeros(len(params))
-
-args = parser.parse_args()
+state_tmp = state.copy()  # copy state for test after quantization
+result_param = {}
 
 
 # -------------------------    override quantization layer component    -------------------------
