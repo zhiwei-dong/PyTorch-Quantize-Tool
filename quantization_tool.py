@@ -54,7 +54,7 @@ class EltwiseAdd(nn.Module):
         if not self.is_quanti:
             return data
         else:
-            tmp = Trim2FixedPoint(data, bit_width=self.bit_width, fl=self.fl)
+            tmp = Trim2FixedPoint(data, bit_width=self.bit_width, fraction_length=self.fl)
             return tmp
 
     def forward(self, *input):
@@ -83,7 +83,7 @@ class EltwiseMult(nn.Module):
         if not self.is_quanti:
             return data
         else:
-            tmp = Trim2FixedPoint(data, bit_width=self.bit_width, fl=self.fl)
+            tmp = Trim2FixedPoint(data, bit_width=self.bit_width, fraction_length=self.fl)
             return tmp.view(data.size())
 
     def forward(self, *input):
@@ -139,17 +139,17 @@ def evaluate(model, data_loader):
 # -------------------------    quantization function section    -------------------------
 # data 原数据
 # bit_width 位宽
-# fl fraction_length 小数部分长度
+# fraction_length 小数部分长度
 
-def Trim2FixedPoint(data, bit_width=8, fl=0):
-    max_data = (pow(2, bit_width - 1) - 1) * pow(2, -fl)  # 当前设定位宽和fl的最大值
-    min_data = -pow(2, bit_width - 1) * pow(2, -fl)  # 当前设定位宽和fl的最小值
+def Trim2FixedPoint(data, bit_width=8, fraction_length=0):
+    max_data = (pow(2, bit_width - 1) - 1) * pow(2, -fraction_length)  # 当前设定位宽和fl的最大值
+    min_data = -pow(2, bit_width - 1) * pow(2, -fraction_length)  # 当前设定位宽和fl的最小值
     # https://pytorch.org/docs/stable/torch.html?highlight=clamp#torch.clamp
     data = torch.clamp(data, min_data, max_data)  # 设置上下极限，使得原数据被限制在本动态范围内
-    data /= pow(2, -fl)  # 除分数部分
+    data /= pow(2, -fraction_length)  # 除分数部分
     data = torch.floor(data)  # 得到小的最接近的整数d
     data[data % 2 != 0] += 1  # ？
-    data *= pow(2, -fl)  # 乘回去
+    data *= pow(2, -fraction_length)  # 乘回去
     return data
 
 
