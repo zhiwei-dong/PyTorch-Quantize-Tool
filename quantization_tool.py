@@ -125,6 +125,22 @@ class EltwiseMult(nn.Module):
 
 # -------------------------    model section(custom needed)    -------------------------
 
+class Quantization(nn.Module):
+    def __init__(self, bit_width, fraction_length, bool_q):
+        super(Quantization, self).__init__()
+        self.bit_width = bit_width
+        self.fraction_length = fraction_length
+        self.bool_q = bool_q
+
+    def forward(self, data):
+
+        if not self.bool_q:
+            return data
+        else:
+            new_data = Trim2FixedPoint(data, bit_width=self.bit_width, fraction_length=self.fraction_length)
+            return new_data
+
+
 class Net(nn.Module):
     def __init__(self, bit_width, fraction_length, is_quantization):
         super(Net, self).__init__()
