@@ -1,8 +1,10 @@
+# coding=utf-8
 # Program:
 # This script is for TG_team to quantize their custom neural network pre-trained model.
 # It's a general script to use.
 # History:
 # 2019/09/27    Albert Dong	First release
+# 2019/10/9     Albert Dong	add get model params
 # License:
 # BSD
 ##########################################################################
@@ -17,7 +19,26 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 
+
 # -------------------------    param section    -------------------------
+def get_params(state):
+    params = []
+    tmplist = []
+    tmpname = ''
+    for name in state:
+        if tmpname:
+            tmpname = name.split('.')[0:-1]
+            tmplist.append(name)
+        elif tmpname is name.split('.')[0:-1]:
+            tmplist.append(name)
+        else:
+            params.append(tmplist)
+            tmplist = []
+            tmpname = name.split('.')[0:-1]
+            tmplist.append(name)
+    return params
+
+
 """
 Args:
     bit_width 位宽
@@ -35,7 +56,7 @@ pretrain_model_path = args.pretrain  # 预训练模型参数路径
 param_saving_path = args.saving  # 量化后参数存储的位置
 bit_width = args.bit_width  # 量化的目标比特数
 state = torch.load(pretrain_model_path)  # 预训练模型参数
-params = []
+params = get_params(state)
 fraction_length = numpy.zeros(len(params))
 is_quantization = numpy.zeros(len(params))
 state_tmp = state.copy()  # copy state for test after quantization
