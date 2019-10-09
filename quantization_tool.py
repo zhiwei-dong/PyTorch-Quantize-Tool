@@ -26,10 +26,10 @@ def get_params(state):
     tmplist = []
     tmpname = ''
     for name in state:
-        if tmpname:
+        if tmpname == '':
             tmpname = name.split('.')[0:-1]
             tmplist.append(name)
-        elif tmpname is name.split('.')[0:-1]:
+        elif tmpname == name.split('.')[0:-1]:
             tmplist.append(name)
         else:
             params.append(tmplist)

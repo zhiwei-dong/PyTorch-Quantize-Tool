@@ -24,25 +24,32 @@
 
 import torchvision.models as models
 import torch
+
 path = "/Users/dongz/Dongz/dl/resnet50-19c8e357.pth"
 resnet50 = models.resnet50()
 pretrain_model = torch.load(path)
-params = []
-tmplist = []
-tmpname = ''
-for name in pretrain_model:
-    if tmpname is '':
-        tmpname = name.split('.')[0:-1]
-        tmplist.append(name)
-    elif tmpname is name.split('.')[0:-1]:
-        tmplist.append(name)
-    else:
-        params.append(tmplist)
-        tmplist = []
-        tmpname = name.split('.')[0:-1]
-        tmplist.append(name)
-    print(name)
+
+
+def get_params(state):
+    params = []
+    tmplist = []
+    tmpname = ''
+    for name in state:
+        if tmpname == '':
+            tmpname = name.split('.')[0:-1]
+            tmplist.append(name)
+        elif tmpname == name.split('.')[0:-1]:
+            tmplist.append(name)
+        else:
+            params.append(tmplist)
+            tmplist = []
+            tmpname = name.split('.')[0:-1]
+            tmplist.append(name)
+    return params
+
+
+params = get_params(pretrain_model)
+
 print(pretrain_model)
 
 # test for quantization component
-
