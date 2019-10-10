@@ -1,4 +1,15 @@
 # coding=utf-8
+# Program:
+# This script is for TG_team to quantize their custom neural network pre-trained model.
+# It's a general script to use.
+# History:
+# 2019/09/27    Albert Dong	First release
+# 2019/10/9     Albert Dong	add get model params
+# License:
+# BSD
+##########################################################################
+
+
 # import argparse
 #
 # # test parser
