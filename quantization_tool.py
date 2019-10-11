@@ -36,6 +36,7 @@ def get_params(state):
             tmplist = []
             tmpname = name.split('.')[0:-1]
             tmplist.append(name)
+    params.append(tmplist)
     return params
 
 
