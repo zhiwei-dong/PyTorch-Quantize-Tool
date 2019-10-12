@@ -44,7 +44,6 @@ def get_params(state):
             tmpname = name.split('.')[0:-1]
             tmplist.append(name)
     params.append(tmplist)
-    # print(params)
     return params
 
 
@@ -164,7 +163,7 @@ class Net(nn.Module):
         assert imgH % 16 == 0, 'imgH has to be a multiple of 16'
 
         ks = [3, 3, 3, 3, 3, 3, 3, 2, 2]
-        ps = [1, 1, 1, 1, 1, 1, 1, 0, 0] 
+        ps = [1, 1, 1, 1, 1, 1, 1, 0, 0]
         ss = [1, 1, 1, 1, 1, 1, 1, 1, 2]
         nm = [64, 128, 256, 256, 512, 512, 512, 512, 512]
 
@@ -175,7 +174,7 @@ class Net(nn.Module):
             nOut = nm[i]
             cnn.add_module('conv{0}'.format(i),
                            nn.Conv2d(nIn, nOut, ks[i], ss[i], ps[i]))
-            
+
             if batchNormalization:
                 cnn.add_module('batchnorm{0}'.format(i), nn.BatchNorm2d(nOut))
             if leakyRelu:
@@ -185,12 +184,12 @@ class Net(nn.Module):
                 cnn.add_module('relu{0}'.format(i), nn.ReLU(True))
 
         convRelu(0, True)
-        cnn.add_module('pooling{0}'.format(0), nn.MaxPool2d(2, 2))  
+        cnn.add_module('pooling{0}'.format(0), nn.MaxPool2d(2, 2))
         convRelu(1, True)
-        cnn.add_module('pooling{0}'.format(1), nn.MaxPool2d(2, 2))  
+        cnn.add_module('pooling{0}'.format(1), nn.MaxPool2d(2, 2))
         convRelu(2, True)
         convRelu(3, True)
-        cnn.add_module('pooling{0}'.format(2), nn.MaxPool2d((2, 2), (2, 1), (0, 0))) 
+        cnn.add_module('pooling{0}'.format(2), nn.MaxPool2d((2, 2), (2, 1), (0, 0)))
         convRelu(4, True)
         convRelu(5, True)
 
@@ -221,7 +220,7 @@ class Net(nn.Module):
         assert imgH % 16 == 0, 'imgH has to be a multiple of 16'
 
         ks = [3, 3, 3, 3, 3, 3, 3, 2, 2]
-        ps = [1, 1, 1, 1, 1, 1, 1, 0, 0] 
+        ps = [1, 1, 1, 1, 1, 1, 1, 0, 0]
         ss = [1, 1, 1, 1, 1, 1, 1, 1, 2]
         nm = [64, 128, 256, 256, 512, 512, 512, 512, 512]
 
@@ -246,12 +245,12 @@ class Net(nn.Module):
                 cnn.add_module('relu{0}'.format(i), nn.ReLU(True))
 
         convRelu(0, True)
-        cnn.add_module('pooling{0}'.format(0), nn.MaxPool2d(2, 2))  
+        cnn.add_module('pooling{0}'.format(0), nn.MaxPool2d(2, 2))
         convRelu(1, True)
-        cnn.add_module('pooling{0}'.format(1), nn.MaxPool2d(2, 2))  
+        cnn.add_module('pooling{0}'.format(1), nn.MaxPool2d(2, 2))
         convRelu(2, True)
         convRelu(3, True)
-        cnn.add_module('pooling{0}'.format(2), nn.MaxPool2d((2, 2), (2, 1), (0, 0))) 
+        cnn.add_module('pooling{0}'.format(2), nn.MaxPool2d((2, 2), (2, 1), (0, 0)))
         convRelu(4, True)
         convRelu(5, True)
 
@@ -297,19 +296,19 @@ class Net(nn.Module):
         self.cnn = cnn
         self.branch1 = branch2 #first two character branch
         self.branch2 = branch1 #last five-six character branch
-        # self.fc_branch1 = fc_branch1 
-        # self.fc_branch2 = fc_branch2 
+        # self.fc_branch1 = fc_branch1
+        # self.fc_branch2 = fc_branch2
         # self.fc2 = nn.Linear(512*1, 76)
         self.fc1 = nn.Linear(512*1, 76)
         self.fc2 = nn.Linear(512*1, 76)
         self.fc1_quanti = Quantization(bit_width, fraction_length[18], is_quantization[18])
         self.fc2_quanti = Quantization(bit_width, fraction_length[19], is_quantization[19])
-        
+
 
     def forward(self, input):
         # conv features
         conv_out = self.cnn(input)
-        
+
         branch_1 = self.branch1(conv_out)
         b1, c1, h1, w1 = branch_1.size()
         assert h1 == 1, "the height of branch_1 must be 1"
@@ -360,7 +359,7 @@ class MyDataset(Dataset):
     def get_labels(self, label_path):
         # return text labels in a list
         with open(label_path, 'r', encoding='utf-8') as file:
-            labels = [ {c.strip().split(' ')[0]:c.strip().split(' ')[1]}for c in file.readlines()]  
+            labels = [ {c.strip().split(' ')[0]:c.strip().split(' ')[1]}for c in file.readlines()]
 
         return labels
 
