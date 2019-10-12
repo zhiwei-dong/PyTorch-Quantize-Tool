@@ -58,7 +58,6 @@ def get_params(state):
             tmplist.append(name)
     return params
 
-
 params = get_params(pretrain_model)
 
 print(pretrain_model)
