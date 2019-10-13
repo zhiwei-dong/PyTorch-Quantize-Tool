@@ -7,6 +7,8 @@
 # 2019/10/9     Albert Dong	add get model params
 # 2019/10/13    Albert Dong add muti_gpu support
 # 2019/10/13    Albert Dong remove tqdm support
+# 2019/10/13    Albert Dong re-add tqdm support
+#
 # License:
 # BSD
 ##########################################################################
@@ -22,11 +24,8 @@ import torch.nn as nn
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
-# from tqdm import tqdm
-
+from tqdm import tqdm
 import utils
-
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 # -------------------------    param section    -------------------------
@@ -351,7 +350,8 @@ class Net(nn.Module):
 # -------------------------    loader section(custom needed)    -------------------------
 
 class MyDataset(Dataset):
-    def __init__(self, label_path, alphabet, resize, img_root='/home/yzzc/Work/lq/carplate_quantize/carplate_recognition/data/test_img'):
+    def __init__(self, label_path, alphabet, resize,
+                 img_root='/home/yzzc/Work/lq/carplate_quantize/carplate_recognition/data/test_img'):
         super(MyDataset, self).__init__()
         self.img_root = img_root
         self.labels = self.get_labels(label_path)
@@ -409,15 +409,16 @@ data_loader = DataLoader(dataset=test_data, batch_size=batch_size)
 
 def evaluate(model, data_loader, max_i=1000):
     print('Start val')
-    model = model.to(device)
+    model = model.cuda()
     model.eval()
     model.cuda()
     accuracy = 0
     n_correct = 0
     with torch.no_grad():
-        for i, (image, index) in enumerate(data_loader):
+        for i, (image, index) in tqdm(enumerate(data_loader), ascii=True):
             if i % 10 == 0:
-                print(i)
+                pass
+                ## print(i)
             if torch.cuda.is_available():
                 image = image.cuda()
 
@@ -437,8 +438,8 @@ def evaluate(model, data_loader, max_i=1000):
                 if pred == target:
                     n_correct += 1
 
-        accuracy = n_correct / float(len(test_data))  ####
-        print(n_correct, len(test_data))
+        accuracy = n_correct / float(len(test_data))
+        ## print(n_correct, len(test_data))
     return accuracy
 
 
