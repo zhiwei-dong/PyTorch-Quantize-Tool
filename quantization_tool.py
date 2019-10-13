@@ -66,7 +66,7 @@ parser.add_argument('-s', '--saving', help='path to saving quantized model',
                     '/home/yzzc/Work/lq/license_plate_pytorch/crnn_chinese_characters_rec/expr/all_ft_2/crnn_best_quantize.pth')
 parser.add_argument('-b', '--bit_width', type=int, default=8,
                     help='number of bit you want to quantize pretrained model (default:8)')
-parser.add_argument('--gpu_id', default='0', type=str,
+parser.add_argument('--gpu_id', default='0,1,2,3', type=str,
                     help='id(s) for CUDA_VISIBLE_DEVICES')
 args = parser.parse_args()
 
