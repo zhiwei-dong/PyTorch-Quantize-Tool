@@ -5,22 +5,23 @@
 # History:
 # 2019/09/27    Albert Dong	First release
 # 2019/10/9     Albert Dong	add get model params
+# 2019/10/13    Albert Dong add muti_gpu support
 # License:
 # BSD
 ##########################################################################
 
 # -------------------------    import section(edit if you need)    -------------------------
 import argparse
-
-from tqdm import tqdm
-import numpy
 import os
+
 import cv2
+import numpy
 import torch
 import torch.nn as nn
+from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
-from torch.autograd import Variable
+from tqdm import tqdm
 
 import utils
 
@@ -57,13 +58,21 @@ Args:
 """
 parser = argparse.ArgumentParser(description='PyTorch Ristretto Quantization Tool')
 parser.add_argument('-p', '--pretrain', help='path of pre-trained model',
-                    default='/home/yzzc/Work/lq/license_plate_pytorch/crnn_chinese_characters_rec/expr/all_ft_2/crnn_best.pth')
+                    default=
+                    '/home/yzzc/Work/lq/license_plate_pytorch/crnn_chinese_characters_rec/expr/all_ft_2/crnn_best.pth')
 parser.add_argument('-s', '--saving', help='path to saving quantized model',
-                    default='/home/yzzc/Work/lq/license_plate_pytorch/crnn_chinese_characters_rec/expr/all_ft_2/crnn_best_quantize.pth')
+                    default=
+                    '/home/yzzc/Work/lq/license_plate_pytorch/crnn_chinese_characters_rec/expr/all_ft_2/crnn_best_quantize.pth')
 parser.add_argument('-b', '--bit_width', type=int, default=8,
                     help='number of bit you want to quantize pretrained model (default:8)')
+parser.add_argument('--gpu_id', default='0', type=str,
+                    help='id(s) for CUDA_VISIBLE_DEVICES')
 args = parser.parse_args()
-device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+
+# Use CUDA
+os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu_id
+assert torch.cuda.is_available(), 'CUDA is needed for CNN'
+
 pretrain_model_path = args.pretrain  # 预训练模型参数路径
 param_saving_path = args.saving  # 量化后参数存储的位置
 bit_width = args.bit_width  # 量化的目标比特数

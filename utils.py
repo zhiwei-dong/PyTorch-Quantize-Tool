@@ -1,18 +1,16 @@
 #!/usr/bin/python
 # encoding: utf-8
 
-# !/usr/bin/python
-# encoding: utf-8
+import collections
+import os
+import random
 
+import cv2
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
-import collections
 from tqdm import tqdm
-import numpy as np
-import cv2
-import os
-import random
 
 
 class strLabelConverter(object):

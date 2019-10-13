@@ -33,8 +33,8 @@
 
 # test param
 
-import torchvision.models as models
 import torch
+import torchvision.models as models
 
 path = "/Users/dongz/Dongz/dl/resnet50-19c8e357.pth"
 resnet50 = models.resnet50()
@@ -57,6 +57,7 @@ def get_params(state):
             tmpname = name.split('.')[0:-1]
             tmplist.append(name)
     return params
+
 
 params = get_params(pretrain_model)
 
