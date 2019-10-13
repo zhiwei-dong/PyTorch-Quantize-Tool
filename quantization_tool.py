@@ -6,6 +6,7 @@
 # 2019/09/27    Albert Dong	First release
 # 2019/10/9     Albert Dong	add get model params
 # 2019/10/13    Albert Dong add muti_gpu support
+# 2019/10/13    Albert Dong remove tqdm support
 # License:
 # BSD
 ##########################################################################
@@ -21,7 +22,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
-from tqdm import tqdm
+# from tqdm import tqdm
 
 import utils
 
@@ -462,7 +463,7 @@ def Trim2FixedPoint(data, bit_width=8, fraction_length=0):
 """
 这个部分量化所有的参数，逐层量化，得到最佳量化策略之后测试精度并且保存最佳量化策略下的模型
 """
-for layer in tqdm(range(len(params)), ascii=True):  # 遍历所有的层数
+for layer in range(len(params)):  # 遍历所有的层数
     acc_param = 0  # init accuracy
     print('-------Quantizing layer:{}\'s parameter-------'.format(layer))
     for fraction_length_of_param in range(bit_width):  # 遍历所有的小数位置
@@ -519,7 +520,7 @@ print('-------Quantize parameter is done, best accuracy is {} -------'.format(ac
 """
 这个部分是为了获得 fraction_length，这个参数是为模型定义量化的时候准备的
 """
-for layer in tqdm(range(len(is_quantization)), ascii=True):  # 遍历所有层
+for layer in range(len(is_quantization)):  # 遍历所有层
     print('-------Quantizing layer:{}\'s inout-------'.format(layer))
     acc_param = 0  # init accuracy
     for fraction_length_of_param in range(bit_width):  # 遍历所有的小数位
