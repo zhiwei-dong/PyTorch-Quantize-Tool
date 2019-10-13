@@ -350,7 +350,7 @@ class Net(nn.Module):
 # -------------------------    loader section(custom needed)    -------------------------
 
 class MyDataset(Dataset):
-    def __init__(self, label_path, alphabet, resize, img_root=''):
+    def __init__(self, label_path, alphabet, resize, img_root='/home/yzzc/Work/lq/carplate_quantize/carplate_recognition/data/test_img'):
         super(MyDataset, self).__init__()
         self.img_root = img_root
         self.labels = self.get_labels(label_path)
