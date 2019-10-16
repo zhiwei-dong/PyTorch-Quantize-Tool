@@ -3,11 +3,12 @@
 # This script is for TG_team to quantize their custom neural network pre-trained model.
 # It's a general script to use.
 # History:
-# 2019/09/27    Albert Dong	First release
-# 2019/10/9     Albert Dong	add get model params
-# 2019/10/13    Albert Dong add muti_gpu support
-# 2019/10/13    Albert Dong remove tqdm support
-# 2019/10/13    Albert Dong re-add tqdm support
+# 2019/09/27    Albert Dong	@ First release
+# 2019/10/9     Albert Dong	@ add get model params
+# 2019/10/13    Albert Dong @ add muti_gpu support
+# 2019/10/13    Albert Dong @ remove tqdm support
+# 2019/10/13    Albert Dong @ re-add tqdm support
+# 2019/10/13    Albert Dong @ print params
 #
 # License:
 # BSD
@@ -25,6 +26,7 @@ from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 from tqdm import tqdm
+
 import utils
 
 
@@ -82,6 +84,13 @@ fraction_length = numpy.zeros(len(params))
 is_quantization = numpy.zeros(len(params))
 state_tmp = state.copy()  # copy state for test after quantization
 result_param = {}
+
+# -------------------------    echo program params    -------------------------
+
+print("gpu id: " + str(args.gpu_id))
+print("pretrain path: " + str(args.pretrain))
+print("saving path: " + str(args.saving))
+print("bit width: " + str(args.bit_width))
 
 
 # -------------------------    override quantization layer component    -------------------------
@@ -163,6 +172,7 @@ class Quantization(nn.Module):
 
 
 '''
+# Example for model defination
 class Net(nn.Module):
     def __init__(self, bit_width, fraction_length, is_quantization):
         super(Net, self).__init__()
@@ -415,7 +425,7 @@ def evaluate(model, data_loader, max_i=1000):
     accuracy = 0
     n_correct = 0
     with torch.no_grad():
-        for i, (image, index) in tqdm(enumerate(data_loader), ascii=True):
+        for i, (image, index) in tqdm(enumerate(data_loader)):
             if i % 10 == 0:
                 pass
                 ## print(i)
@@ -500,7 +510,7 @@ for layer in range(len(params)):  # 遍历所有的层数
 
         acc_param = max(acc_param, acc_param_eval)
 
-        print('--------Accuracy of fraction length: {} is {}---------'.format(fraction_length_of_param, acc_param))
+        print('--------Accuracy of fraction length: {} is {}---------'.format(fraction_length_of_param, acc_param_eval))
 
     print('-------Layer:{} parameter\'s best result is {} -------'.format(layer, result_param[layer][0]))
 final_state = state.copy()
