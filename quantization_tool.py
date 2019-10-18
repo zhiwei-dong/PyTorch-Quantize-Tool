@@ -40,6 +40,8 @@ def get_params(state):
         if tmpname == '':
             tmpname = name.split('.')[0:-1]
             tmplist.append(name)
+        elif name.split('.')[-1] == "num_batches_tracked":
+            pass
         elif tmpname == name.split('.')[0:-1]:
             tmplist.append(name)
         else:
@@ -88,9 +90,9 @@ result_param = {}
 # -------------------------    echo program params    -------------------------
 
 print("gpu id: " + str(args.gpu_id))
-print("pretrain path: " + str(args.pretrain))
-print("saving path: " + str(args.saving))
 print("bit width: " + str(args.bit_width))
+print("saving path: " + str(args.saving))
+print("pretrain path: " + str(args.pretrain))
 
 
 # -------------------------    override quantization layer component    -------------------------
@@ -418,7 +420,7 @@ data_loader = DataLoader(dataset=test_data, batch_size=batch_size)
 # -------------------------    eval section(custom needed)    -------------------------
 
 def evaluate(model, data_loader, max_i=1000):
-    print('Start val')
+    # print('Start val')
     model = model.cuda()
     model.eval()
     model.cuda()
@@ -449,7 +451,7 @@ def evaluate(model, data_loader, max_i=1000):
                     n_correct += 1
 
         accuracy = n_correct / float(len(test_data))
-        ## print(n_correct, len(test_data))
+        # print(n_correct, len(test_data))
     return accuracy
 
 
@@ -482,10 +484,7 @@ for layer in range(len(params)):  # 遍历所有的层数
 
         for key in params[layer]:  # 量化制定的层
             param = state[key].clone()  # 提取特定层参数
-            # print('before: ', param)
             param = Trim2FixedPoint(param.float(), bit_width, fraction_length_of_param)  # 量化
-            # print('after: ', param)
-
             state_tmp[key] = param  # 修改临时参数中的指定层参数
 
         model = Net(bit_width=bit_width,
@@ -510,9 +509,10 @@ for layer in range(len(params)):  # 遍历所有的层数
 
         acc_param = max(acc_param, acc_param_eval)
 
-        print('-------- Accuracy of fraction length: {} is {} --------'.format(fraction_length_of_param, acc_param_eval))
+        print(
+            '-------- Accuracy of fraction length: {} is {} --------'.format(fraction_length_of_param, acc_param_eval))
 
-    print('-------- Layer:{} parameter\'s best result is {} --------'.format(layer, result_param[layer][0]))
+    print('-------- Layer:{} parameter\'s best result is {} --------\n\n'.format(layer, result_param[layer][0]))
 final_state = state.copy()
 # 使用最佳量化策略，量化预训练模型
 for layer_num, _ in result_param.items():
