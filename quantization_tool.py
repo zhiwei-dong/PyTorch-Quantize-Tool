@@ -419,18 +419,13 @@ data_loader = DataLoader(dataset=test_data, batch_size=batch_size)
 
 # -------    eval section(custom needed)    -------
 
-def evaluate(model, data_loader, max_i=1000):
-    # print('Start val')
-    model = model.cuda()
+def evaluate(model, data_loader):
     model.eval()
     model.cuda()
     accuracy = 0
     n_correct = 0
     with torch.no_grad():
-        for i, (image, index) in tqdm(enumerate(data_loader)):
-            if i % 10 == 0:
-                pass
-                ## print(i)
+        for i, (image, index) in enumerate(tqdm(data_loader)):
             if torch.cuda.is_available():
                 image = image.cuda()
 
@@ -446,12 +441,10 @@ def evaluate(model, data_loader, max_i=1000):
             raw_preds = converter.decode(preds.data, preds_size.data, raw=True)
 
             for pred, target in zip(sim_preds, label):
-                # print(i, pred, target)
                 if pred == target:
                     n_correct += 1
 
         accuracy = n_correct / float(len(test_data))
-        # print(n_correct, len(test_data))
     return accuracy
 
 
@@ -537,7 +530,7 @@ for layer in range(len(params)):
             acc_eval = evaluate(model, data_loader)
             # if 精度大于等于初始/上次的精度 ? 替换记录 : 替换tmp上次参数（为了跨层）
             if acc_eval >= acc_max:
-                result_param[layer][index] = [param_name, fl, acc_eval]  # 保存小数位置和精度
+                result_param[layer][index] = [param_name, fl, round(acc_eval * 100, 2)]  # 保存小数位置和精度
             else:
                 # 获取指定部分参数用作恢复
                 param_recover = state[param_name].clone()
@@ -547,8 +540,8 @@ for layer in range(len(params)):
                 state_tmp[param_name] = param_recover
             # 保证acc_param 一直是最好的精度
             acc_max = max(acc_max, acc_eval)
-            print('-- param: {}, fl: {}, acc: {} --'.format(param_name, fl, acc_eval))
-        print('-- param: {}, best_fl: {}, acc_max: {} --'
+            print('-- param: {}, fl: {}, acc: {}% --'.format(param_name, fl, round(acc_eval * 100, 2)))
+        print('-- param: {}, best_fl: {}, acc_max: {}% --\n\n'
               .format(param_name, result_param[layer][index][1], result_param[layer][index][2]))
 final_state = state.copy()
 # 使用最佳量化策略，量化预训练模型
@@ -561,7 +554,7 @@ for layer in result_param:
         final_state[pr[0]] = param
 model.load_state_dict(final_state)  # eval
 acc_eval = evaluate(model, data_loader)  # get eval accuracy
-print('-- Quantize parameter is done, best accuracy is {} --'.format(acc_eval))
+print('-- Quantize parameter is done, best accuracy is {}% --'.format(round(acc_eval * 100, 2)))
 
 # -------    quantize input && output    -------
 """
@@ -569,7 +562,7 @@ print('-- Quantize parameter is done, best accuracy is {} --'.format(acc_eval))
 """
 for layer in range(len(is_quantization)):  # 遍历所有层
     print('-- Quantizing layer:{}\'s inout --'.format(layer))
-    acc_max = 0  # init accuracy
+    acc_max = 0  # init_acc
     for fl in range(bit_width):  # 遍历所有的小数位
         print('-- Trying fraction length: {} --'.format(fl))
         fraction_length[layer] = fl
