@@ -58,12 +58,12 @@ Args:
     bit_width 位宽
     fraction_length 小数位长度 仅在输入输出量化时起作用
     is_quantize 是否量化 仅在输入输出量化时起作用
-    
+
 """
 parser = argparse.ArgumentParser(description='PyTorch Ristretto Quantization Tool')
 parser.add_argument('-p', '--pretrain', help='path of pre-trained model',
                     default=
-                    '/home/yzzc/Work/lq/license_plate_pytorch/crnn_chinese_characters_rec/expr/all_ft_2/crnn_best.pth')
+                    'crnn_best.pth')
 parser.add_argument('-s', '--saving', help='path to saving quantized model',
                     default=
                     '/home/yzzc/Work/lq/license_plate_pytorch/crnn_chinese_characters_rec/expr/all_ft_2/crnn_best_quantize.pth')
@@ -154,7 +154,6 @@ class EltwiseMult(nn.Module):
                 res = self.quantization(res * t)
         return res
 
-# 这里是处理BN层的代码
 
 # -------    model section(custom needed)    -------
 
@@ -464,102 +463,6 @@ def Trim2FixedPoint(data, bit_width=8, fraction_length=0):
     return data
 
 
-# -------    quantize params    -------
-"""
-这个部分量化所有的参数，逐层量化，得到最佳量化策略之后测试精度并且保存最佳量化策略下的模型
-"""
-# for layer in range(len(params)):  # 遍历所有的层数
-#     acc_param = 0  # init accuracy
-#     print('-- Quantizing layer:{}\'s parameter --'.format(layer))
-#     for fraction_length_of_param in range(bit_width):  # 遍历所有的小数位置
-#         print('-- Trying fraction length: {} --'.format(fraction_length_of_param))
-#
-#         for key in params[layer]:  # 量化制定的层
-#             param = state[key].clone()  # 提取特定层参数
-#             param = Trim2FixedPoint(param.float(), bit_width, fraction_length_of_param)  # 量化
-#             state_tmp[key] = param  # 修改临时参数中的指定层参数
-#
-#         model = Net(bit_width=bit_width,
-#                     fraction_length=fraction_length,
-#                     is_quantization=is_quantization)  # 模型实例化
-#         model.load_state_dict(state_tmp)  # 加载参数
-#         acc_param_eval = evaluate(model, data_loader)  # eval
-#
-#         # #liuqi added
-#         # if fraction_length_of_param == 0:
-#         #     result_param[layer] = result_param[layer]
-#
-#         if acc_param_eval >= acc_param:
-#             result_param[layer] = [fraction_length_of_param, acc_param_eval]  # 保存小数位置和精度
-#         else:
-#             result_param[layer] = result_param[layer]
-#             # 如果没能获取更高的精度，恢复最好的参数,用于跨层保存最好参数
-#             for key_new in params[layer]:
-#                 param_new = state[key_new].clone()
-#                 param_new = Trim2FixedPoint(param_new.float(), bit_width, result_param[layer][0])
-#                 state_tmp[key_new] = param_new
-#
-#         acc_param = max(acc_param, acc_param_eval)
-#
-#         print(
-#             '-- Accuracy of fraction length: {} is {} --'.format(fraction_length_of_param, acc_param_eval))
-#
-#     print('-- Layer:{} parameter\'s best result is {} --\n\n'.format(layer, result_param[layer][0]))
-# 量化开始前先实例化model
-model = Net(bit_width=bit_width, fraction_length=fraction_length, is_quantization=is_quantization)  # 模型实例化
-# 使用一个双层循环遍历所有的参数部分
-for layer in range(len(params)):
-    # 遍历所有的层的所有部分，对于state 字典来说param_name 唯一确定一个参数部分;
-    # 对于params result_params 来说二维数组params[layer][index] result_params[layer][index] 唯一确定一个部分
-    for index, param_name in enumerate(params[layer]):  # param_name: str 表征一个层的一个参数部分
-        acc_max = 0  # init_acc
-        print('-- Quantizing {}\'s parameter --'.format(params[layer][index]))
-        # 遍历所有的小数位置 fl: fraction_length
-        for fl in range(bit_width):
-            print('-- Trying fraction length: {} --'.format(fl))
-            # 提取特定层的特定部分参数
-            param = state[param_name].clone()
-            # 量化
-            param = Trim2FixedPoint(param.float(), bit_width, fl)
-            # 修改tmp参数中的指定层的指定部分参数
-            state_tmp[param_name] = param
-            # 使用模型加载参数
-            model.load_state_dict(state_tmp)
-            # 计算精度
-            acc_eval = evaluate(model, data_loader)
-            # if 精度大于等于初始/上次的精度 ? 替换记录 : 替换tmp上次参数（为了跨层）
-            if acc_eval >= acc_max:
-                result_param[layer][index] = [param_name, fl, round(acc_eval * 100, 2)]  # 保存小数位置和精度
-            else:
-                # 获取指定部分参数用作恢复
-                param_recover = state[param_name].clone()
-                # 记录中是最好的参数，使用最好的参数恢复
-                param_recover = Trim2FixedPoint(param_recover.float(), bit_width, result_param[layer][index][1])
-                # 把最好的参数装回tmp参数中
-                state_tmp[param_name] = param_recover
-            # 保证acc_param 一直是最好的精度
-            acc_max = max(acc_max, acc_eval)
-            print('-- param: {}, fl: {}, acc: {}% --'.format(param_name, fl, round(acc_eval * 100, 2)))
-        print('-- param: {}, best_fl: {}, acc_max: {}% --\n\n'
-              .format(param_name, result_param[layer][index][1], result_param[layer][index][2]))
-final_state = state.copy()
-# 使用最佳量化策略，量化预训练模型
-# 先遍历层
-for layer in result_param:
-    # 遍历记录 pr: param_record[param_name, best_fl, acc_max]
-    for index, pr in enumerate(layer):
-        param = state[pr[0]].clone()
-        param = Trim2FixedPoint(param.float(), bit_width, pr[1])
-        final_state[pr[0]] = param
-model.load_state_dict(final_state)  # eval
-acc_eval = evaluate(model, data_loader)  # get eval accuracy
-print('-- Quantize parameter is done, best accuracy is {}% --'.format(round(acc_eval * 100, 2)))
-
-# -------    saving quantized model    -------
-print("Saving quantized model.")
-torch.save(final_state, param_saving_path)  # 保存最佳策略下的参数
-
-# -------    quantize input && output    -------
 """
 这个部分是为了获得 fraction_length，这个参数是为模型定义量化的时候准备的
 """
@@ -582,7 +485,6 @@ for layer in range(len(is_quantization)):
         # if 精度最佳 ? 保存参数 : 保持不变
         fraction_length[layer] = fl if acc_inout_eval > acc_max else fraction_length[layer]
         acc_max = max(acc_max, acc_inout_eval)
-
 # test section
 print('-- Testing --')
 is_quantization = numpy.ones_like(fraction_length)  # 返回一个和best一样尺寸的全1矩阵
