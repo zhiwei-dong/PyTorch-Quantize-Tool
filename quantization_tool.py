@@ -147,6 +147,10 @@ print("saving path: " + str(args.saving))
 print("pretrain path: " + str(args.pretrain))
 print("transfer BN to Scale: " + str(args.bn2scale))
 
+# -------    warning message    -------
+
+print("Please Notify: You MUST be sure that you have permission of saving path! ")
+
 
 # -------    override quantization layer component    -------
 
