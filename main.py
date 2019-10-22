@@ -1,24 +1,9 @@
 # coding=utf-8
-# Program:
-# This script is for TG_team to quantize their custom neural network pre-trained model.
-# It's a general script to use.
-# History:
-# 2019/09/27    Albert Dong	@ First release
-# 2019/10/9     Albert Dong	@ add get model params
-# 2019/10/13    Albert Dong @ add muti_gpu support
-# 2019/10/13    Albert Dong @ remove tqdm support
-# 2019/10/13    Albert Dong @ re-add tqdm support
-# 2019/10/13    Albert Dong @ print params
-# 2019/10/21    Albert Dong @ fix BN bug
-# 2019/10/22    Albert Dong @ take part code
-#
-# License:
-# BSD
-##########################################################################
 
 # -------    import section(edit if you need)    -------
 import argparse
 import os
+
 import numpy
 
 from src.model.model import Net
@@ -26,13 +11,6 @@ from src.utils.eval import evaluate, data_loader
 from src.utils.utils import *
 
 # -------    param section    -------
-"""
-Args:
-    bit_width 位宽
-    fraction_length 小数位长度 仅在输入输出量化时起作用
-    is_quantize 是否量化 仅在输入输出量化时起作用
-    
-"""
 parser = argparse.ArgumentParser(description='PyTorch Ristretto Quantization Tool')
 parser.add_argument('-p', '--pretrain', help='path of pre-trained model',
                     default=
@@ -44,7 +22,7 @@ parser.add_argument('-t', '--saving_fl', help='path to saving fl list',
                     default=
                     './checkpoints/best.fl')
 parser.add_argument('-b', '--bit_width', type=int, default=8,
-                    help='number of bit you want to quantize pretrained model (default:8)')
+                    help='number of bit you want to quantize pre-trained model (default:8)')
 parser.add_argument('--gpu_id', default='0,1,2,3', type=str,
                     help='id(s) for CUDA_VISIBLE_DEVICES')
 parser.add_argument('--bn2scale', default=True, type=bool,
@@ -53,28 +31,26 @@ args = parser.parse_args()
 
 # Use CUDA
 os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu_id
-assert torch.cuda.is_available(), 'CUDA is needed for CNN'
+assert torch.cuda.is_available(), 'CUDA is needed for Quantize'
 
 pretrain_model_path = args.pretrain  # 预训练模型参数路径
 fl_saving_path = args.saving_fl  # 预训练模型参数路径
 param_saving_path = args.saving  # 量化后参数存储的位置
 bit_width = args.bit_width  # 量化的目标比特数
 state = torch.load(pretrain_model_path)  # 预训练模型参数
-params = get_params(state, args.bn2scale)
-fraction_length = numpy.zeros(len(params))
-is_quantization = numpy.zeros(len(params))
+params = get_params(state, args.bn2scale)  # 预训练模型参数列表
+fraction_length = numpy.zeros(len(params))  # 输入输出量化fl列表
+is_quantization = numpy.zeros(len(params))  # 是否量化
 state_tmp = state.copy()  # copy state for test after quantization
 result_param = params.copy()  # copy params structure for record
 
 # -------    program params    -------
-
 print('\n-- Program Params -- ')
 print("gpu id: " + str(args.gpu_id))
 print("bit width: " + str(args.bit_width))
 print("saving path: " + str(args.saving))
 print("pretrain path: " + str(args.pretrain))
 print("transfer BN to Scale: " + str(args.bn2scale))
-print('\n')
 
 # -------    warning message    -------
 print('\n-- WARNING -- ')
