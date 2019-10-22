@@ -151,8 +151,9 @@ for layer in range(len(is_quantization)):
     print('-- layer: {}, best_fl: {}, acc_max: {}% --\n'
           .format(layer_name, int(fraction_length[layer]), round(acc_max * 100, 2)))
 
-# -------    saving fl list    -------
-print("\n-- Saving fl list to {} --\n".format(fl_saving_path))
+# -------    saving fl dict(param and inout)    -------
+print("\n-- Saving fl dict to {} --\n".format(fl_saving_path))
+fl_dict = {'param_fl': result_param, 'inout_fl': fraction_length}
 torch.save(fraction_length, fl_saving_path)  # 保存最佳策略下的参数
 
 # -------    test section    -------
