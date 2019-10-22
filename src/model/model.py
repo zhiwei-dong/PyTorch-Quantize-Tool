@@ -101,7 +101,7 @@ class Net(nn.Module):
             if batchNormalization:
                 cnn.add_module('batchnorm{0}'.format(i), nn.BatchNorm2d(nOut))
                 cnn.add_module('quanti{0}'.format(2 * i + 1),
-                               Quantization(bit_width, fraction_length[2 * i], is_quantization[2 * i]))
+                               Quantization(bit_width, fraction_length[2 * i + 1], is_quantization[2 * i + 1]))
 
             if leakyRelu:
                 cnn.add_module('relu{0}'.format(i),

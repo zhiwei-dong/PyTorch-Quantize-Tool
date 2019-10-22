@@ -19,7 +19,6 @@
 # -------    import section(edit if you need)    -------
 import argparse
 import os
-
 import numpy
 
 from src.model.model import Net
@@ -27,7 +26,6 @@ from src.utils.eval import evaluate, data_loader
 from src.utils.utils import *
 
 # -------    param section    -------
-
 """
 Args:
     bit_width 位宽
@@ -68,7 +66,7 @@ is_quantization = numpy.zeros(len(params))
 state_tmp = state.copy()  # copy state for test after quantization
 result_param = params.copy()  # copy params structure for record
 
-# -------    echo program params    -------
+# -------    program params    -------
 
 print('\n-- Program Params -- ')
 print("gpu id: " + str(args.gpu_id))
@@ -162,19 +160,20 @@ for layer in range(len(is_quantization)):
     acc_max = 0  # init_acc
     # 设置当前层量化输入输出
     is_quantization[layer] = 1
+    fl_tmp = fraction_length.copy()
     for fl in range(bit_width):  # 遍历所有的小数位
         print('-- Trying fraction length: {} --'.format(fl))
-        fraction_length[layer] = fl
+        fl_tmp[layer] = int(fl)
         # 使用当前参数实例化模型
-        model = Net(bit_width=bit_width, fraction_length=fraction_length, is_quantization=is_quantization)
-        model.load_state_dict(final_state)
+        model = Net(bit_width=bit_width, fraction_length=fl_tmp, is_quantization=is_quantization)
+        model.load_state_dict(state)
         acc_inout_eval = evaluate(model, data_loader)
         # if 精度最佳 ? 保存参数 : 保持不变
         fraction_length[layer] = fl if acc_inout_eval > acc_max else fraction_length[layer]
         acc_max = max(acc_max, acc_inout_eval)
         print('-- layer: {}, fl: {}, acc: {}% --'.format(layer_name, fl, round(acc_inout_eval * 100, 2)))
     print('-- layer: {}, best_fl: {}, acc_max: {}% --\n'
-          .format(layer_name, fraction_length[layer], acc_max))
+          .format(layer_name, int(fraction_length[layer]), round(acc_max * 100, 2)))
 
 # -------    saving fl list    -------
 print("\n-- Saving fl list to {} --\n".format(fl_saving_path))
@@ -184,7 +183,7 @@ torch.save(fraction_length, fl_saving_path)  # 保存最佳策略下的参数
 print('\n -- Testing --')
 is_quantization = numpy.ones_like(fraction_length)  # 返回一个和best一样尺寸的全1矩阵
 model = Net(bit_width=bit_width, fraction_length=fraction_length, is_quantization=is_quantization)
-model.load_state_dict(final_state)
+model.load_state_dict(state)
 acc_inout_eval = evaluate(model, data_loader)
 print('-- Quantize inout is done, best accuracy is {} --\n '.format(acc_inout_eval))
 
