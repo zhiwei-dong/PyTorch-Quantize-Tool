@@ -1,9 +1,9 @@
-# PyTorch-Quantization-Tool
+# PyTorch-Quantize-Tool
 
 - Program:
-  - This script is for TG_team to quantize their custom neural network's pre-trained model.
+  - This tool is for TecArt algorithm team to quantize their custom neural network's pre-trained model.
   - This tool can quantize PyTorch model to 8-bit fixed-point model for hardware acceleration.
-It's a general script to use.
+  - It's a general script to use.
 - History:
   - 2019/09/27    Albert Dong	@ First release
   - 2019/10/9     Albert Dong	@ add get model params
