@@ -21,6 +21,9 @@ parser.add_argument('-s', '--saving', help='path to saving quantized model',
 parser.add_argument('-t', '--saving_fl', help='path to saving fl list',
                     default=
                     './checkpoints/best.fl')
+parser.add_argument('-m', '--model', help='specific model to quantize',
+                    default=
+                    'carplate')
 parser.add_argument('-b', '--bit_width', type=int, default=8,
                     help='number of bit you want to quantize pre-trained model (default:8)')
 parser.add_argument('--gpu_id', default='0,1,2,3', type=str,
@@ -37,6 +40,7 @@ pretrain_model_path = args.pretrain  # 预训练模型参数路径
 fl_saving_path = args.saving_fl  # 预训练模型参数路径
 param_saving_path = args.saving  # 量化后参数存储的位置
 bit_width = args.bit_width  # 量化的目标比特数
+# map_location 是权宜之计，需要改
 state = torch.load(pretrain_model_path, map_location=torch.device('cpu'))  # 预训练模型参数
 params = get_params(state, args.bn2scale)  # 预训练模型参数列表
 fraction_length = numpy.zeros(len(params))  # 输入输出量化fl列表
