@@ -1,7 +1,4 @@
-#!/usr/bin/python
 # encoding: utf-8
-
-import collections
 import os
 import random
 
