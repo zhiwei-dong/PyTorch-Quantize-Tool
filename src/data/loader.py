@@ -12,7 +12,7 @@ from torch.utils.data import Dataset
 # -------    loader section(custom needed)    -------
 class MyDataset(Dataset):
     def __init__(self, label_path, alphabet, resize,
-                 img_root='/home/yzzc/Work/lq/carplate_quantize/carplate_recognition/data/test_img'):
+                 img_root=''):
         super(MyDataset, self).__init__()
         self.img_root = img_root
         self.labels = self.get_labels(label_path)
