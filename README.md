@@ -1,8 +1,8 @@
 # PyTorch-Quantization-Tool
-This tool can quantize PyTorch model to 8-bit fixed-point model for hardware acceleration.
-#########################################################################
+
 - Program:
   - This script is for TG_team to quantize their custom neural network's pre-trained model.
+  - This tool can quantize PyTorch model to 8-bit fixed-point model for hardware acceleration.
 It's a general script to use.
 - History:
   - 2019/09/27    Albert Dong	@ First release
