@@ -3,10 +3,10 @@
 # -------    import section(edit if you need)    -------
 import argparse
 import os
-from threading import Thread
 
 import numpy
 
+from threading import Thread
 from src.model.model import Net
 from src.utils.eval import evaluate, data_loader
 from src.utils.utils import *
@@ -33,26 +33,26 @@ def f_eval():
     # 量化开始前先实例化model
     model = Net(bit_width=bit_width, fraction_length=fraction_length, is_quantization=is_quantization)  # 模型实例化
     model.load_state_dict(state)
-    dev = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # 开始量化前先测试一下精度
     print('\n-- Starting First Eval. -- ')
-    acc = evaluate(model, data_loader, dev)
+    acc = evaluate(model, data_loader)
     print('-- Oringin pre-train model\'s accuracy is {}% --\n'.format(round(acc * 100, 2)))
 
 
-def test_param(layer, fl, device, acc_max):
-    model = Net(bit_width=bit_width, fraction_length=fraction_length, is_quantization=is_quantization)  # 模型实例化
+def test_param(model, layer, fl, device):
     for key in params[layer]:  # param_name: str 表征一个层的一个参数部分
         # 提取特定层的特定部分参数
         param = state[key].clone()
         # 量化
         param = float2fixed(param.float(), bit_width, fl)
         # 修改tmp参数中的指定层的指定部分参数
-        state_best[key] = param
+        state_tmp[key] = param
     # 使用模型加载参数
-    model.load_state_dict(state_best)
+    model.load_state_dict(state_tmp)
+    model.to(device)
     # 计算精度
-    acc_max[fl] = evaluate(model, data_loader, device)
+    acc_eval = evaluate(model, data_loader)
+    return acc_eval
 
 
 def quantize_param():
@@ -61,40 +61,31 @@ def quantize_param():
     这个部分量化所有的参数，逐层量化，得到最佳量化策略之后测试精度并且保存最佳量化策略下的模型
     """
     # 量化开始前先实例化model
-    # model = Net(bit_width=bit_width, fraction_length=fraction_length, is_quantization=is_quantization)  # 模型实例化
+    model = Net(bit_width=bit_width, fraction_length=fraction_length, is_quantization=is_quantization)  # 模型实例化
     print('\n-- Starting Quantize parameter. --')
     # 使用一个双层循环遍历所有的参数部分，量化层的一个组合参数而不是单独的参数
-    for layer in range(len(params)):
+    for layer in range(len(params), torch.cuda.device_count()):
         layer_name = '.'.join(params[layer][0].split('.')[0:-1])
         print('\n-- Quantizing {}\'s parameter --'.format(layer_name))
-        # 初始化acc_max数组
-        acc_max = [0 for _ in range(bit_width)]
-        # 使用多线程来加速，可能会导致负载不均衡，这里是一个demo
-        # 使用8个线程4个GPU来加速
+        acc_max = 0  # init_acc
         # 遍历所有的小数位置 fl: fraction_length
-        threads = []
-        device = ['cuda:0', 'cuda:1', 'cuda:2', 'cuda:3']
-        # for loop in range(int(bit_width / len(device))):
-        for i, dev in enumerate(device):
-            thread = Thread(target=test_param, args=(layer, i, dev, acc_max))
-            # print('-- Trying fraction length: {} --'.format(i))
-            thread.start()
-            threads.append(thread)
-        for i, dev in enumerate(device):
-            thread = Thread(target=test_param, args=(layer, i + 4, dev, acc_max))
-            # print('-- Trying fraction length: {} --'.format(i + 4))
-            thread.start()
-            threads.append(thread)
-        for thread in threads:
-            thread.join()
-        # 跨层时使用最好的参数加载到state_best中, 先记录最大值的索引(best_fl)、acc的最大值
-        result_param[layer] = [acc_max.index(max(acc_max)), max(acc_max)]
-        for key in params[layer]:
-            param_recover = state[key].clone()
-            # 记录中是最好的参数，使用最好的参数恢复
-            param_recover = float2fixed(param_recover.float(), bit_width, result_param[layer][0])
-            # 把最好的参数装回tmp参数中
-            state_best[key] = param_recover
+        for fl in range(bit_width):
+            print('-- Trying fraction length: {} --'.format(fl))
+            acc_eval = test_param(model, layer, fl)
+            # if 精度大于等于初始/上次的精度 ? 替换记录 : 替换tmp上次参数（为了跨层）
+            if acc_eval >= acc_max:
+                result_param[layer] = [fl, round(acc_eval * 100, 2)]  # 保存小数位置和精度
+            else:
+                # 获取指定部分参数用作恢复
+                for key in params[layer]:
+                    param_recover = state[key].clone()
+                    # 记录中是最好的参数，使用最好的参数恢复
+                    param_recover = float2fixed(param_recover.float(), bit_width, result_param[layer][0])
+                    # 把最好的参数装回tmp参数中
+                    state_tmp[key] = param_recover
+            # 保证acc_param 一直是最好的精度
+            acc_max = max(acc_max, acc_eval)
+            print('-- layer: {}, fl: {}, acc: {}% --'.format(layer_name, fl, round(acc_eval * 100, 2)))
         print('-- layer: {}, best_fl: {}, acc_max: {}% --\n'
               .format(layer_name, result_param[layer][0], result_param[layer][1]))
 
@@ -197,13 +188,13 @@ if __name__ == "__main__":
     params = get_params(state, args.bn2scale)  # 预训练模型参数列表
     fraction_length = numpy.zeros(len(params))  # 输入输出量化fl列表
     is_quantization = numpy.zeros(len(params))  # 是否量化
-    state_best = state.copy()  # copy state for test after quantization
+    state_tmp = state.copy()  # copy state for test after quantization
     result_param = params.copy()  # copy params structure for record
     # -------    main function    -------
     echo_params(args)
     echo_warning()
-    # f_eval()
-    quantize_param()
+    f_eval()
+    # quantize_param()
     # quantize_inout()
     # -------    quantization finished    -------
     print("\n-- Quantization finished! --\n")

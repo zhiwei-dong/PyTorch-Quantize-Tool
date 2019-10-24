@@ -18,28 +18,41 @@ test_data = MyDataset(label_path=label_txt, alphabet=alphabet, resize=(img_W, im
 data_loader = DataLoader(dataset=test_data, batch_size=batch_size)
 
 
-def evaluate(model, data_loader):
+def evaluate(model, data_loader, dev):
     model.eval()
-    model.cuda()
+    model.to(dev)
     accuracy = 0
     n_correct = 0
     with torch.no_grad():
-        for i, (image, index) in enumerate(tqdm(data_loader)):
-            if torch.cuda.is_available():
-                image = image.cuda()
-            label = user_utils.get_batch_label(test_data, index)
-            preds = model(image)
-            batch_size = image.size(0)
-            preds_size = Variable(torch.IntTensor([preds.size(0)] * batch_size))
-            _, preds = preds.max(2)
-            preds = preds.transpose(1, 0).contiguous().view(-1)
-            converter = user_utils.strLabelConverter(test_data.alphabet)
-            sim_preds = converter.decode(preds.data, preds_size.data, raw=False)
-            raw_preds = converter.decode(preds.data, preds_size.data, raw=True)
-
-            for pred, target in zip(sim_preds, label):
-                if pred == target:
-                    n_correct += 1
-
+        if dev == "cuda:0":
+            for i, (image, index) in enumerate(tqdm(data_loader)):
+                image = image.to(dev)
+                label = user_utils.get_batch_label(test_data, index)
+                preds = model(image)
+                batch_size = image.size(0)
+                preds_size = Variable(torch.IntTensor([preds.size(0)] * batch_size))
+                _, preds = preds.max(2)
+                preds = preds.transpose(1, 0).contiguous().view(-1)
+                converter = user_utils.strLabelConverter(test_data.alphabet)
+                sim_preds = converter.decode(preds.data, preds_size.data, raw=False)
+                raw_preds = converter.decode(preds.data, preds_size.data, raw=True)
+                for pred, target in zip(sim_preds, label):
+                    if pred == target:
+                        n_correct += 1
+        else:
+            for i, (image, index) in enumerate(data_loader):
+                image = image.to(dev)
+                label = user_utils.get_batch_label(test_data, index)
+                preds = model(image)
+                batch_size = image.size(0)
+                preds_size = Variable(torch.IntTensor([preds.size(0)] * batch_size))
+                _, preds = preds.max(2)
+                preds = preds.transpose(1, 0).contiguous().view(-1)
+                converter = user_utils.strLabelConverter(test_data.alphabet)
+                sim_preds = converter.decode(preds.data, preds_size.data, raw=False)
+                raw_preds = converter.decode(preds.data, preds_size.data, raw=True)
+                for pred, target in zip(sim_preds, label):
+                    if pred == target:
+                        n_correct += 1
         accuracy = n_correct / float(len(test_data))
     return accuracy
