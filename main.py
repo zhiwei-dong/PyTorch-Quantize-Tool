@@ -28,6 +28,31 @@ def echo_warning():
     print("-- Please Notify: You MUST be sure that you have permission of saving path! --\n")
 
 
+def f_eval():
+    # 量化开始前先实例化model
+    model = Net(bit_width=bit_width, fraction_length=fraction_length, is_quantization=is_quantization)  # 模型实例化
+    model.load_state_dict(state)
+    # 开始量化前先测试一下精度
+    print('\n-- Starting First Eval. -- ')
+    acc = evaluate(model, data_loader)
+    print('-- Oringin pre-train model\'s accuracy is {}% --\n'.format(round(acc * 100, 2)))
+
+
+def test_param(model, layer, fl):
+    for key in params[layer]:  # param_name: str 表征一个层的一个参数部分
+        # 提取特定层的特定部分参数
+        param = state[key].clone()
+        # 量化
+        param = float2fixed(param.float(), bit_width, fl)
+        # 修改tmp参数中的指定层的指定部分参数
+        state_tmp[key] = param
+    # 使用模型加载参数
+    model.load_state_dict(state_tmp)
+    # 计算精度
+    acc_eval = evaluate(model, data_loader)
+    return acc_eval
+
+
 def quantize_param():
     # -------    quantize params    -------
     """
@@ -35,32 +60,16 @@ def quantize_param():
     """
     # 量化开始前先实例化model
     model = Net(bit_width=bit_width, fraction_length=fraction_length, is_quantization=is_quantization)  # 模型实例化
-    # 开始量化前先测试一下精度
-    print('\n-- Starting First Eval. -- ')
-    model.load_state_dict(state)
-    acc = evaluate(model, data_loader)
-    print('-- Oringin pre-train model\'s accuracy is {}% --\n'.format(round(acc * 100, 2)))
-
     print('\n-- Starting Quantize parameter. --')
     # 使用一个双层循环遍历所有的参数部分，量化层的一个组合参数而不是单独的参数
-    for layer in range(len(params)):
+    for layer in range(len(params), torch.cuda.device_count()):
         layer_name = '.'.join(params[layer][0].split('.')[0:-1])
         print('\n-- Quantizing {}\'s parameter --'.format(layer_name))
         acc_max = 0  # init_acc
         # 遍历所有的小数位置 fl: fraction_length
         for fl in range(bit_width):
             print('-- Trying fraction length: {} --'.format(fl))
-            for key in params[layer]:  # param_name: str 表征一个层的一个参数部分
-                # 提取特定层的特定部分参数
-                param = state[key].clone()
-                # 量化
-                param = float2fixed(param.float(), bit_width, fl)
-                # 修改tmp参数中的指定层的指定部分参数
-                state_tmp[key] = param
-            # 使用模型加载参数
-            model.load_state_dict(state_tmp)
-            # 计算精度
-            acc_eval = evaluate(model, data_loader)
+            acc_eval = test_param(model, layer, fl)
             # if 精度大于等于初始/上次的精度 ? 替换记录 : 替换tmp上次参数（为了跨层）
             if acc_eval >= acc_max:
                 result_param[layer] = [fl, round(acc_eval * 100, 2)]  # 保存小数位置和精度
@@ -147,7 +156,6 @@ if __name__ == "__main__":
     parser.add_argument('-p', '--pretrain', help='path of pre-trained model',
                         default=
                         '/media1/zhiwei.dong/best.pth')
-    # '/home/yzzc/Work/lq/license_plate_pytorch/crnn_chinese_characters_rec/expr/all_ft_2/crnn_best.pth')
     parser.add_argument('-s', '--saving', help='path to saving quantized model',
                         default=
                         './checkpoints/best_quantize.pth')
@@ -168,7 +176,7 @@ if __name__ == "__main__":
     # Use CUDA
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu_id
     assert torch.cuda.is_available(), 'CUDA is needed for Quantize'
-
+    # -------    global program param    -------
     pretrain_model_path = args.pretrain  # 预训练模型参数路径
     fl_saving_path = args.saving_fl  # 预训练模型参数路径
     param_saving_path = args.saving  # 量化后参数存储的位置
@@ -183,7 +191,8 @@ if __name__ == "__main__":
     # -------    main function    -------
     echo_params(args)
     echo_warning()
-    quantize_param()
-    quantize_inout()
+    f_eval()
+    # quantize_param()
+    # quantize_inout()
     # -------    quantization finished    -------
     print("\n-- Quantization finished! --\n")
