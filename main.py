@@ -40,8 +40,27 @@ def f_eval():
     print('-- Oringin pre-train model\'s accuracy is {}% --\n'.format(round(acc * 100, 2)))
 
 
-def test_param(layer, fl, device, acc_max):
-    model = Net(bit_width=bit_width, fraction_length=fraction_length, is_quantization=is_quantization)  # 模型实例化
+def test_param_parallel(layer, fl, device, acc_max):
+    names = locals()
+    names['model%s' % fl] = Net(bit_width=bit_width, fraction_length=fraction_length,
+                                is_quantization=is_quantization)  # 模型实例化
+    for key in params[layer]:  # param_name: str 表征一个层的一个参数部分
+        # 提取特定层的特定部分参数
+        param = state[key].clone()
+        # 量化
+        param = float2fixed(param.float(), bit_width, fl)
+        # 修改tmp参数中的指定层的指定部分参数
+        state_best[key] = param
+    # 使用模型加载参数
+    names['model%s' % fl].load_state_dict(state_best)
+    names['model%s' % fl].to(device)
+    # 计算精度
+    acc_max[fl] = evaluate(names['model%s' % fl], data_loader, device)
+
+
+def test_param(layer, fl, device):
+    model = Net(bit_width=bit_width, fraction_length=fraction_length,
+                is_quantization=is_quantization)  # 模型实例化
     for key in params[layer]:  # param_name: str 表征一个层的一个参数部分
         # 提取特定层的特定部分参数
         param = state[key].clone()
@@ -51,17 +70,19 @@ def test_param(layer, fl, device, acc_max):
         state_best[key] = param
     # 使用模型加载参数
     model.load_state_dict(state_best)
+    model.to(device)
     # 计算精度
-    acc_max[fl] = evaluate(model, data_loader, device)
+    acc_eval = evaluate(model, data_loader, device)
+    return acc_eval
 
 
-def quantize_param():
+def quantize_param_parallel():
     # -------    quantize params    -------
     """
     这个部分量化所有的参数，逐层量化，得到最佳量化策略之后测试精度并且保存最佳量化策略下的模型
     """
     # 量化开始前先实例化model
-    # model = Net(bit_width=bit_width, fraction_length=fraction_length, is_quantization=is_quantization)  # 模型实例化
+    model = Net(bit_width=bit_width, fraction_length=fraction_length, is_quantization=is_quantization)  # 模型实例化
     print('\n-- Starting Quantize parameter. --')
     # 使用一个双层循环遍历所有的参数部分，量化层的一个组合参数而不是单独的参数
     for layer in range(len(params)):
@@ -73,22 +94,19 @@ def quantize_param():
         # 使用8个线程4个GPU来加速
         # 遍历所有的小数位置 fl: fraction_length
         threads = []
-        device = ['cuda:0', 'cuda:1', 'cuda:2', 'cuda:3']
-        # for loop in range(int(bit_width / len(device))):
+        # num_dev: cuda设备数目，即可用的显卡数，这些卡被排序为cuda:0 - cuda:num_dev-1
+        num_dev = torch.cuda.device_count()
+        # 分配
+        device = ['cuda:' + str(i % num_dev) for i in range(bit_width)]
+        assert len(device) == bit_width, 'Error: program bug.'
         for i, dev in enumerate(device):
-            thread = Thread(target=test_param, args=(layer, i, dev, acc_max))
-            # print('-- Trying fraction length: {} --'.format(i))
-            thread.start()
-            threads.append(thread)
-        for i, dev in enumerate(device):
-            thread = Thread(target=test_param, args=(layer, i + 4, dev, acc_max))
-            # print('-- Trying fraction length: {} --'.format(i + 4))
+            thread = Thread(target=test_param_parallel, args=(layer, i, dev, acc_max))
             thread.start()
             threads.append(thread)
         for thread in threads:
             thread.join()
         # 跨层时使用最好的参数加载到state_best中, 先记录最大值的索引(best_fl)、acc的最大值
-        result_param[layer] = [acc_max.index(max(acc_max)), max(acc_max)]
+        result_param[layer] = [acc_max.index(max(acc_max)), round(max(acc_max), 2)]
         for key in params[layer]:
             param_recover = state[key].clone()
             # 记录中是最好的参数，使用最好的参数恢复
@@ -117,14 +135,73 @@ def quantize_param():
     torch.save(final_state, param_saving_path)  # 保存最佳策略下的参数
 
 
-def save_fl():  # 函数内参数为全局变量
-    # -------    saving fl dict(param and inout)    -------
-    print("\n-- Saving fl dict to {} --\n".format(fl_saving_path))
-    fl_dict = {'param_fl': result_param, 'inout_fl': fraction_length}
-    torch.save(fl_dict, fl_saving_path)  # 保存最佳策略下的参数
+def quantize_param():
+    # -------    quantize params    -------
+    """
+    这个部分量化所有的参数，逐层量化，得到最佳量化策略之后测试精度并且保存最佳量化策略下的模型
+    """
+    # 量化开始前先实例化model
+    model = Net(bit_width=bit_width, fraction_length=fraction_length, is_quantization=is_quantization)  # 模型实例化
+    print('\n-- Starting Quantize parameter. --')
+    device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
+    # 使用一个双层循环遍历所有的参数部分，量化层的一个组合参数而不是单独的参数
+    for layer in range(len(params)):
+        layer_name = '.'.join(params[layer][0].split('.')[0:-1])
+        print('\n-- Quantizing {}\'s parameter --'.format(layer_name))
+        acc_max = 0  # init_acc
+        # 遍历所有的小数位置 fl: fraction_length
+        for fl in range(bit_width):
+            print('-- Trying fraction length: {} --'.format(fl))
+            acc_eval = test_param(layer, fl, device)
+            # if 精度大于等于初始/上次的精度 ? 替换记录 : 替换tmp上次参数（为了跨层）
+            if acc_eval >= acc_max:
+                result_param[layer] = [fl, round(acc_eval * 100, 2)]  # 保存小数位置和精度
+            else:
+                # 获取指定部分参数用作恢复
+                for key in params[layer]:
+                    param_recover = state[key].clone()
+                    # 记录中是最好的参数，使用最好的参数恢复
+                    param_recover = float2fixed(param_recover.float(), bit_width, result_param[layer][0])
+                    # 把最好的参数装回tmp参数中
+                    state_best[key] = param_recover
+            # 保证acc_param 一直是最好的精度
+            acc_max = max(acc_max, acc_eval)
+            print('-- layer: {}, fl: {}, acc: {}% --'.format(layer_name, fl, round(acc_eval * 100, 2)))
+        print('-- layer: {}, best_fl: {}, acc_max: {}% --\n'
+              .format(layer_name, result_param[layer][0], result_param[layer][1]))
+
+    # -------    test section    -------
+    final_state = state.copy()
+    # 使用最佳量化策略，量化预训练模型
+    # 先遍历层
+    for index, layer in enumerate(result_param):
+        # 遍历记录 layer[best_fl, acc_max]
+        for key in params[index]:
+            param = state[key].clone()
+            param = float2fixed(param.float(), bit_width, layer[0])
+            final_state[key] = param
+    model.load_state_dict(final_state)  # eval
+    acc_eval = evaluate(model, data_loader, device)  # get eval accuracy
+    print('-- Quantize parameter is done, best accuracy is {}% --\n'.format(round(acc_eval * 100, 2)))
+
+    # -------    saving quantized model    -------
+    print("\n-- Saving quantized model to {} --\n".format(param_saving_path))
+    torch.save(final_state, param_saving_path)  # 保存最佳策略下的参数
 
 
-def quantize_inout():
+def save_fl(path: str) -> None:
+    """
+    :param path:
+    :return:
+    """
+    print("\n-- Saving fl dict to {} --\n".format(path))
+    with open(path, 'w') as res:
+        res.write('quantize param result_fl: \n\t' + str(result_param))
+        res.write('\n')
+        res.write('quantize inout fraction_length: \n\t' + str(fraction_length))
+
+
+def quantize_inout() -> None:
     # -------    quantize input && output    -------
     """
     这个部分是为了获得 fraction_length，这个参数是为模型定义量化的时候准备的
@@ -149,6 +226,7 @@ def quantize_inout():
             fraction_length[layer] = fl if acc_inout_eval > acc_max else fraction_length[layer]
             acc_max = max(acc_max, acc_inout_eval)
             print('-- layer: {}, fl: {}, acc: {}% --'.format(layer_name, fl, round(acc_inout_eval * 100, 2)))
+            save_fl(fl_saving_path)
         print('-- layer: {}, best_fl: {}, acc_max: {}% --\n'
               .format(layer_name, int(fraction_length[layer]), round(acc_max * 100, 2)))
 
@@ -170,14 +248,14 @@ if __name__ == "__main__":
     parser.add_argument('-s', '--saving', help='path to saving quantized model',
                         default=
                         './checkpoints/best_quantize.pth')
-    parser.add_argument('-t', '--saving_fl', help='path to saving fl list',
-                        default=
-                        './checkpoints/best.fl')
     parser.add_argument('-m', '--model', help='specific model to quantize',
                         default=
                         'carplate')
     parser.add_argument('-b', '--bit_width', type=int, default=8,
                         help='number of bit you want to quantize pre-trained model (default:8)')
+    parser.add_argument('--saving_fl', help='path to saving fl list',
+                        default=
+                        './checkpoints/best.fl')
     parser.add_argument('--gpu_id', default='0,1,2,3', type=str,
                         help='id(s) for CUDA_VISIBLE_DEVICES')
     parser.add_argument('--bn2scale', default=True, type=bool,
@@ -203,7 +281,8 @@ if __name__ == "__main__":
     echo_params(args)
     echo_warning()
     # f_eval()
-    quantize_param()
-    # quantize_inout()
+    # quantize_param()
+    # quantize_param_parallel()
+    quantize_inout()
     # -------    quantization finished    -------
     print("\n-- Quantization finished! --\n")
