@@ -19,7 +19,7 @@ class Net(nn.Module):
             return x
     """
 
-    '''
+    """
     #original model
     def __init__(self, bit_width, fraction_length, is_quantization, imgH=32, nc=1, nclass=76, leakyRelu=True):
         super(Net, self).__init__()
@@ -77,7 +77,7 @@ class Net(nn.Module):
         self.branch2 = branch1 #last five-six character branch
         self.fc1 = nn.Linear(512*1, 76)
         self.fc2 = nn.Linear(512*1, 76)
-    '''
+    """
 
     def __init__(self, bit_width, fraction_length, is_quantization, imgH=32, nc=1, nclass=76, leakyRelu=True):
         super(Net, self).__init__()

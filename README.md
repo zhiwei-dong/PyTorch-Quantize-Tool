@@ -16,3 +16,10 @@
   - 2019/10/22    Albert Dong    @ fix inout bugs
 - License:
   - GPL v3 
+- Bugs:
+  - fc inout quantization.
+- Jobs:
+  - 断点续传
+  - 加速
+  - 新功能
+  - 开放api

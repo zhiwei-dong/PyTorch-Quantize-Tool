@@ -8,7 +8,7 @@ from src.data.loader import MyDataset
 from src.utils import user_utils
 
 # 加载数据集需要用到的参数
-label_txt = '/home/yzzc/Work/lq/carplate_quantize/carplate_recognition/data/quantize_data.txt'
+label_txt = '/data/zhiwei.dong/datasets/quantize/quantize_data.txt'
 # label_txt = '/home/yzzc/Work/lq/ezai/all_projects/carplate_recognition/data/test_new/split.txt'
 img_H = 32
 img_W = 100

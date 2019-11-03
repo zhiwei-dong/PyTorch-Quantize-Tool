@@ -244,7 +244,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='PyTorch Quantize Tool')
     parser.add_argument('-p', '--pretrain', help='path of pre-trained model',
                         default=
-                        '/media1/zhiwei.dong/best.pth')
+                        '/data/zhiwei.dong/datasets/quantize/best.pth')
     parser.add_argument('-s', '--saving', help='path to saving quantized model',
                         default=
                         './checkpoints/best_quantize.pth')
@@ -256,7 +256,7 @@ if __name__ == "__main__":
     parser.add_argument('--saving_fl', help='path to saving fl list',
                         default=
                         './checkpoints/best.fl')
-    parser.add_argument('--gpu_id', default='0,1,2,3', type=str,
+    parser.add_argument('--gpu_id', default='3, 4, 5', type=str,
                         help='id(s) for CUDA_VISIBLE_DEVICES')
     parser.add_argument('--bn2scale', default=True, type=bool,
                         help='Transfer BN to Scale')
