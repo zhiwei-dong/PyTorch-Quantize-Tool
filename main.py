@@ -135,10 +135,10 @@ def quantize_param_parallel():
     torch.save(final_state, param_saving_path)  # 保存最佳策略下的参数
 
 
-def quantize_param():
-    # -------    quantize params    -------
+def quantize_param(fl):
     """
-    这个部分量化所有的参数，逐层量化，得到最佳量化策略之后测试精度并且保存最佳量化策略下的模型
+    :param fl:
+    :return:
     """
     # 量化开始前先实例化model
     model = Net(bit_width=bit_width, fraction_length=fraction_length, is_quantization=is_quantization)  # 模型实例化
@@ -253,9 +253,12 @@ if __name__ == "__main__":
                         'carplate')
     parser.add_argument('-b', '--bit_width', type=int, default=8,
                         help='number of bit you want to quantize pre-trained model (default:8)')
-    parser.add_argument('--saving_fl', help='path to saving fl list',
+    parser.add_argument('--param_fl', help='path to saving param fl list',
                         default=
-                        './checkpoints/best.fl')
+                        './checkpoints/best_param.fl')
+    parser.add_argument('--inout_fl', help='path to saving inout fl list',
+                        default=
+                        './checkpoints/best_inout.fl')
     parser.add_argument('--gpu_id', default='3, 4, 5', type=str,
                         help='id(s) for CUDA_VISIBLE_DEVICES')
     parser.add_argument('--bn2scale', default=True, type=bool,
