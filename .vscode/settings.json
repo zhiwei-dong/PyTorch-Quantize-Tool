@@ -1,0 +1,4 @@
+{
+    "python.pythonPath": "/data/zhiwei.dong/usr/anaconda3/envs/pytorch/bin/python",
+    "python.formatting.provider": "yapf"
+}
