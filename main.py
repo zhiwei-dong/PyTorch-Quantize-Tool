@@ -148,7 +148,7 @@ def quantize_param():
 
 def quantize_inout(flcheck=None, ) -> None:
     """
-    
+
     :param flcheck: a list, which length is 2 * num_layer, first num_layer items is fraction_length, other is is_quantization.
     """
     print('\n-- Start quantizing input and output. --')
@@ -221,6 +221,7 @@ if __name__ == "__main__":
     echo_params(args)
     f_eval()
     # quantize_param()
-    # quantize_inout()
+    # p = load_fl()
+    quantize_inout()
     # -------    quantization finished    -------
     print("\n-- Quantization finished! --\n")
